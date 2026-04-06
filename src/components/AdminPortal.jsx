@@ -73,7 +73,8 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
             }
         } catch (error) {
             console.error('Portfolio Add Error:', error);
-            alert('Failed to save to Cloud: ' + (error?.message || 'Network error or request blocked. Check your ad-blocker.'));
+            const isFetchError = error?.message?.toLowerCase().includes('fetch') || !error?.message;
+            alert(`Failed to save to Cloud: ${error?.message || 'Network Error'}\n\n${isFetchError ? 'TIP: Both Cloudinary and Supabase seem to be blocked. Please DISABLE your Ad-blocker or try a different network/VPN.' : ''}`);
         }
     };
 
@@ -232,7 +233,11 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
             },
             (error, result) => {
                 if (!error && result && result.event === 'success') {
-                    setNewWork(prev => ({ ...prev, img: result.info.secure_url }));
+                    const imageUrl = result.info.secure_url || result.info.url;
+                    console.log('Cloudinary Success:', imageUrl, result.info);
+                    setNewWork(prev => ({ ...prev, img: imageUrl }));
+                } else if (error) {
+                    console.error('Cloudinary Error:', error);
                 }
             }
         );
@@ -650,17 +655,27 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
                                                 overflow: 'hidden', 
                                                 border: '1px solid rgba(197, 160, 89, 0.2)',
                                                 background: 'rgba(0,0,0,0.3)',
-                                                position: 'relative'
+                                                position: 'relative',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
                                             }}>
                                                 <img 
                                                     src={newWork.img} 
                                                     alt="Preview" 
                                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    onLoad={(e) => e.target.style.opacity = 1}
                                                     onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                        e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8892b0;font-size:12px;">Invalid Image URL</div>';
+                                                        e.target.style.opacity = 0;
+                                                        // Instead of replacing innerHTML, we leave the background logic to show a subtle hint
                                                     }}
                                                 />
+                                                <div style={{ position: 'absolute', fontSize: '10px', color: '#8892b0', pointerEvents: 'none', textAlign: 'center', padding: '10px', zIndex: 0 }}>
+                                                    If image doesn't appear, your browser may be blocking Cloudinary.
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: 'var(--gold-soft)', marginTop: '4px', wordBreak: 'break-all', opacity: 0.6 }}>
+                                                URL: {newWork.img}
                                             </div>
                                         </motion.div>
                                     )}
