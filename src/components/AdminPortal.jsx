@@ -53,15 +53,27 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
     const handleAdd = async () => {
         if (!newWork.title || !newWork.type) return;
         
-        const { data, error } = await supabase.from('portfolio').insert([newWork]).select();
-        
-        if (!error && data) {
-            setWorks([data[0], ...works]);
-            setNewWork({ title: '', type: '', date: '', img: '' });
-            setShowForm(false);
-        } else {
-            console.error('Supabase Error:', error);
-            alert('Failed to save to Cloud: ' + (error?.message || 'Unknown error'));
+        try {
+            // Sanitize payload: only send fields that exist in the database schema
+            const payload = {
+                title: newWork.title,
+                type: newWork.type,
+                date: newWork.date,
+                img: newWork.img
+            };
+
+            const { data, error } = await supabase.from('portfolio').insert([payload]).select();
+            
+            if (error) throw error;
+
+            if (data && data[0]) {
+                setWorks([data[0], ...works]);
+                setNewWork({ title: '', type: '', date: '', img: '' });
+                setShowForm(false);
+            }
+        } catch (error) {
+            console.error('Portfolio Add Error:', error);
+            alert('Failed to save to Cloud: ' + (error?.message || 'Network error or request blocked. Check your ad-blocker.'));
         }
     };
 
@@ -73,21 +85,31 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
 
     const handleSaveEdit = async () => {
         const item = works[editingIndex];
-        if (item.id) {
-            const { error } = await supabase.from('portfolio').update(newWork).eq('id', item.id);
-            if (error) {
-                console.error('Supabase Error:', error);
-                alert('Failed to update Cloud: ' + error.message);
-                return;
-            }
+        if (!item.id) return;
+
+        try {
+            // Sanitize payload: avoid sending primary key or auto-generated fields in the update body
+            const payload = {
+                title: newWork.title,
+                type: newWork.type,
+                date: newWork.date,
+                img: newWork.img
+            };
+
+            const { error } = await supabase.from('portfolio').update(payload).eq('id', item.id);
+            
+            if (error) throw error;
+            
+            const updatedWorks = [...works];
+            updatedWorks[editingIndex] = { ...item, ...payload };
+            setWorks(updatedWorks);
+            setEditingIndex(null);
+            setNewWork({ title: '', type: '', date: '', img: '' });
+            setShowForm(false);
+        } catch (error) {
+            console.error('Portfolio Update Error:', error);
+            alert('Failed to update Cloud: ' + (error?.message || 'Network error or request blocked.'));
         }
-        
-        const updatedWorks = [...works];
-        updatedWorks[editingIndex] = newWork;
-        setWorks(updatedWorks);
-        setEditingIndex(null);
-        setNewWork({ title: '', type: '', date: '', img: '' });
-        setShowForm(false);
     };
 
     // Service Actions
@@ -110,15 +132,25 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
     const handleAddService = async () => {
         if (!newService.title || !newService.desc) return;
         
-        const { data, error } = await supabase.from('services').insert([newService]).select();
-        
-        if (!error && data) {
-            setServices([data[0], ...services]);
-            setNewService({ title: '', desc: '', iconName: 'Mic' });
-            setShowServiceForm(false);
-        } else {
-            console.error('Supabase Error:', error);
-            alert('Failed to save Service to Cloud: ' + (error?.message || 'Unknown error'));
+        try {
+            const payload = {
+                title: newService.title,
+                desc: newService.desc,
+                iconName: newService.iconName
+            };
+
+            const { data, error } = await supabase.from('services').insert([payload]).select();
+            
+            if (error) throw error;
+
+            if (data && data[0]) {
+                setServices([data[0], ...services]);
+                setNewService({ title: '', desc: '', iconName: 'Mic' });
+                setShowServiceForm(false);
+            }
+        } catch (error) {
+            console.error('Service Add Error:', error);
+            alert('Failed to save Service to Cloud: ' + (error?.message || 'Network error or request blocked.'));
         }
     };
 
@@ -130,21 +162,29 @@ const AdminPortal = ({ works, setWorks, services, setServices, onBack }) => {
 
     const handleSaveServiceEdit = async () => {
         const item = services[editingServiceIndex];
-        if (item.id) {
-            const { error } = await supabase.from('services').update(newService).eq('id', item.id);
-            if (error) {
-                console.error('Supabase Error:', error);
-                alert('Failed to update Service in Cloud: ' + error.message);
-                return;
-            }
+        if (!item.id) return;
+
+        try {
+            const payload = {
+                title: newService.title,
+                desc: newService.desc,
+                iconName: newService.iconName
+            };
+
+            const { error } = await supabase.from('services').update(payload).eq('id', item.id);
+            
+            if (error) throw error;
+            
+            const updated = [...services];
+            updated[editingServiceIndex] = { ...item, ...payload };
+            setServices(updated);
+            setEditingServiceIndex(null);
+            setNewService({ title: '', desc: '', iconName: 'Mic' });
+            setShowServiceForm(false);
+        } catch (error) {
+            console.error('Service Update Error:', error);
+            alert('Failed to update Service in Cloud: ' + (error?.message || 'Network error or request blocked.'));
         }
-        
-        const updated = [...services];
-        updated[editingServiceIndex] = newService;
-        setServices(updated);
-        setEditingServiceIndex(null);
-        setNewService({ title: '', desc: '', iconName: 'Mic' });
-        setShowServiceForm(false);
     };
 
     const openUploadWidget = () => {
